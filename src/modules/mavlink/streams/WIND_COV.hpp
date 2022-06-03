@@ -36,6 +36,7 @@
 
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/wind.h>
+#include <uORB/topics/wind_aware_cov.h>
 
 class MavlinkStreamWindCov : public MavlinkStream
 {
@@ -50,45 +51,78 @@ public:
 
 	unsigned get_size() override
 	{
-		return _wind_sub.advertised() ? MAVLINK_MSG_ID_WIND_COV_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES : 0;
+		return _wind_aware_cov_sub.advertised() ? MAVLINK_MSG_ID_WIND_COV_LEN + MAVLINK_NUM_NON_PAYLOAD_BYTES : 0;
 	}
 
 private:
 	explicit MavlinkStreamWindCov(Mavlink *mavlink) : MavlinkStream(mavlink) {}
 
-	uORB::Subscription _wind_sub{ORB_ID(wind)};
+
 	uORB::Subscription _local_pos_sub{ORB_ID(vehicle_local_position)};
+	uORB::Subscription _wind_aware_cov_sub{ORB_ID(wind_aware_cov)};
 
 	bool send() override
 	{
-		wind_s wind;
+		wind_aware_cov_s wind;
 
-		if (_wind_sub.update(&wind)) {
+		if (_wind_aware_cov_sub.update(&wind)) {
 			mavlink_wind_cov_t msg{};
-
 			msg.time_usec = wind.timestamp;
 
-			msg.wind_x = wind.windspeed_north;
-			msg.wind_y = wind.windspeed_east;
-			msg.wind_z = 0.0f;
+			msg.wind_x = wind.wind_x;
+			msg.wind_y = wind.wind_y;
+			msg.wind_z = wind.wind_z;
 
-			msg.var_horiz = wind.variance_north + wind.variance_east;
-			msg.var_vert = 0.0f;
+			msg.var_horiz = wind.var_horiz;
+			msg.var_vert = wind.var_vert;
 
 			vehicle_local_position_s lpos{};
 			_local_pos_sub.copy(&lpos);
 			msg.wind_alt = (lpos.z_valid && lpos.z_global) ? (-lpos.z + lpos.ref_alt) : (float)NAN;
 
-			msg.horiz_accuracy = 0.0f;
-			msg.vert_accuracy = 0.0f;
+			msg.horiz_accuracy = wind.horiz_accuracy;
+			msg.vert_accuracy = wind.vert_accuracy;
 
 			mavlink_msg_wind_cov_send_struct(_mavlink->get_channel(), &msg);
 
 			return true;
 		}
-
 		return false;
 	}
+
+	// -- Original PX4 implementation - commented for reference.
+	//uORB::Subscription _wind_sub{ORB_ID(wind)};
+
+	// bool send() override
+	// {
+	// 	wind_s wind;
+
+	// 	if (_wind_sub.update(&wind)) {
+	// 		mavlink_wind_cov_t msg{};
+
+	// 		msg.time_usec = wind.timestamp;
+
+	// 		msg.wind_x = wind.windspeed_north;
+	// 		msg.wind_y = wind.windspeed_east;
+	// 		msg.wind_z = 0.0f;
+
+	// 		msg.var_horiz = wind.variance_north + wind.variance_east;
+	// 		msg.var_vert = 0.0f;
+
+	// 		vehicle_local_position_s lpos{};
+	// 		_local_pos_sub.copy(&lpos);
+	// 		msg.wind_alt = (lpos.z_valid && lpos.z_global) ? (-lpos.z + lpos.ref_alt) : (float)NAN;
+
+	// 		msg.horiz_accuracy = 0.0f;
+	// 		msg.vert_accuracy = 0.0f;
+
+	// 		mavlink_msg_wind_cov_send_struct(_mavlink->get_channel(), &msg);
+
+	// 		return true;
+	// 	}
+
+	// 	return false;
+	// }
 };
 
 #endif // WIND_COV

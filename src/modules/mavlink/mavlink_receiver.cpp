@@ -256,6 +256,9 @@ MavlinkReceiver::handle_message(mavlink_message_t *msg)
 	case MAVLINK_MSG_ID_STATUSTEXT:
 		handle_message_statustext(msg);
 		break;
+	case MAVLINK_MSG_ID_WIND_COV:
+		handle_message_wind_aware_cov(msg);
+		break;
 
 #if !defined(CONSTRAINED_FLASH)
 
@@ -2916,6 +2919,31 @@ MavlinkReceiver::handle_message_gimbal_device_information(mavlink_message_t *msg
 	gimbal_information.gimbal_device_compid = msg->compid;
 
 	_gimbal_device_information_pub.publish(gimbal_information);
+}
+
+void
+MavlinkReceiver::handle_message_wind_aware_cov(mavlink_message_t *msg)
+{
+	mavlink_wind_cov_t wind_cov;
+	mavlink_msg_wind_cov_decode(msg, &wind_cov);
+	const uint64_t timestamp = hrt_abstime();
+
+	wind_aware_cov_s wind{};
+
+	wind.timestamp = timestamp;
+
+	wind.wind_x = wind_cov.wind_x;
+	wind.wind_y = wind_cov.wind_y;
+	wind.wind_z = wind_cov.wind_z;
+
+	wind.var_horiz = wind_cov.var_horiz;
+	wind.var_vert = wind_cov.var_vert;
+	wind.wind_alt = wind_cov.wind_alt;
+
+	wind.horiz_accuracy = wind_cov.horiz_accuracy;
+	wind.vert_accuracy = wind_cov.vert_accuracy;
+
+	_wind_aware_cov_pub.publish(wind);
 }
 
 void

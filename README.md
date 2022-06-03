@@ -1,3 +1,29 @@
+# Wind-aware modifications
+Allows for PX4 to stream provided MAVLINK wind_cov (231) messages it receives to ground station. Wind estimate is traditionally generated on board; for ease of simulation this allows AirSim (or other simulator) to directly transmit it's own WIND_COV.
+
+* Added new uORB message type wind_aware_cov in msg/wind_aware_cov.msg
+  * Simple clone of MAVLINK WIND_COV (231) message, to allow for retransmission.
+* Added new uORB publisher, _wind_aware_cov_pub, to pass WIND_COV messages in src/modules/mavlink/mavlink_receiver.h
+* Added new handle_message_wind_aware_cov(mavlink_message_t *msg) in src/modules/mavlink/mavlink_receiver.h
+  * Builds uORB struct wind_aware_cov_s using information from received MAVLINK message. Publishes struct using _wind_aware_cov_pub.
+* Modified src/modules/mavlink/streams/WIND_COV.hpp
+  * Builds MAVLINK wind_cov using data from uORB subscriber _wind_aware_cov_sub and transmits to outgoing MAVLINK stream.
+
+## Installation and Usage
+
+1. Clone the repository at the correct branch (wind_aware)
+
+`git clone -b wind_aware https://github.com/CoRAL-OSU/wind_aware_px4.git --recursive`
+
+2. Run the autopilot
+
+`make px4_sitl_default none_iris`
+
+The autopilot should begin building, and once completed will show a large PX4 symbol. It then awaits connection to the simulator.
+
+Original building documentation can be found at [PX4's website](https://docs.px4.io/master/en/dev_setup/building_px4.html)
+
+
 # PX4 Drone Autopilot
 
 [![Releases](https://img.shields.io/github/release/PX4/PX4-Autopilot.svg)](https://github.com/PX4/PX4-Autopilot/releases) [![DOI](https://zenodo.org/badge/22634/PX4/PX4-Autopilot.svg)](https://zenodo.org/badge/latestdoi/22634/PX4/PX4-Autopilot)

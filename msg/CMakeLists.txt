@@ -184,6 +184,7 @@ set(msg_files
 	vtol_vehicle_status.msg
 	wheel_encoders.msg
 	wind.msg
+	wind_aware_cov.msg
 	yaw_estimator_status.msg
 )
 
